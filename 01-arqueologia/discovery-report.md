@@ -20,10 +20,10 @@
 > Este documento consolida todas as descobertas do Estágio 1.
 > Preencha cada seção com as conclusões do time. **Este é o input principal do Estágio 2** — sem ele, a especificação vira chute.
 
-**Time**: [Nome do Time]
-**Data**: 19/05/2026
-**Edição**:
-**Participantes**: [Liste os membros e suas personas]
+**Time**: Workshop Rosa 1
+**Data**: 27/05/2026
+**Edição**: Estagio 1 - Arqueologia executada
+**Participantes**: Par 1 (PO + RE) com contribuicao dos pares 2, 3, 4 e 5
 
 ---
 
@@ -32,7 +32,7 @@
 > Em 3 a 5 frases, resuma o que o time descobriu sobre o SIFAP legado.
 > O que é este sistema? Qual sua criticidade? Qual o estado do código?
 
-[Escreva aqui]
+O SIFAP legado e um monolito Natural/Adabas orientado a cadastro de beneficiarios, calculo de beneficios e conciliacao bancaria com trilha de auditoria. A analise dos 15 programas `.NSN` e 4 DDMs mostrou regras financeiras criticas espalhadas entre `CALCBENF.NSN`, `CALCDSCT.NSN`, `BATCHPGT.NSN` e `BATCHCON.NSN`, com duplicacao parcial de logica. Foram catalogadas 18 regras de negocio com rastreabilidade de arquivo e linha, incluindo excecoes relevantes (regiao 99, CPF especial, filtro de auditoria). Tambem foram registrados 10 misterios com potencial de risco para migracao, dos quais 5 de alta confianca e impacto direto em compliance/financeiro. O estagio esta apto para a Passagem #1, com insumos completos para EARS no Estagio 2.
 
 ---
 
@@ -40,15 +40,24 @@
 
 ### 2.1 Propósito do SIFAP
 
-[Descreva o que o sistema faz com base na análise do código]
+O SIFAP gerencia o ciclo de beneficios sociais: cadastro e manutencao de beneficiarios/programas, validacao de elegibilidade, calculo mensal e sazonal de pagamentos, aplicacao de descontos, conciliacao de retorno bancario e emissao de relatorios operacionais/auditoria.
 
 ### 2.2 Arquitetura Legada
 
-[Descreva a arquitetura: quantos programas, DDMs, fluxos principais]
+Arquitetura baseada em programas Natural que operam diretamente sobre 4 DDMs Adabas (`BENEFICIARIO`, `PAGAMENTO`, `PROGRAMA-SOCIAL`, `AUDITORIA`). Nao foram encontradas chamadas `CALLNAT` explicitas entre os 15 programas; o acoplamento ocorre majoritariamente por compartilhamento de dados nas mesmas entidades. Fluxos principais identificados:
+
+- Cadastro e validacao: `CADBENEF`, `CADDEPEND`, `CADPROG`, `VALBENEF`, `VALDOCS`, `VALELEG`.
+- Calculo e processamento: `CALCBENF`, `CALCDSCT`, `CALCCORR`, `BATCHPGT`, `BATCHCON`.
+- Relatorios: `BATCHREL`, `RELPGT`, `RELAUDIT`, `CONSBENF`.
 
 ### 2.3 Usuários e Perfis
 
-[Quem usa o sistema? Quais perfis de acesso existem?]
+Perfis inferidos do codigo/estrutura:
+
+- Operador de cadastro/atendimento: usa telas de cadastro e consulta (`CAD*`, `CONSBENF`).
+- Processamento batch: usuario tecnico `BATCH` em gravacoes de auditoria de conciliacao.
+- Auditoria/controle: consumo de trilha em `RELAUDIT`, com filtros por usuario/acao/tabela.
+- Gestao financeira: uso de relatorios analiticos e consolidados (`RELPGT`, `BATCHREL`).
 
 ---
 
@@ -58,31 +67,31 @@
 
 > Liste as 5 regras de negócio mais importantes encontradas.
 
-1. [Regra + referência ao catálogo BR-XXX]
-2.
-3.
-4.
-5.
+1. Formula central do beneficio multiparametrica com truncamento (BR-005).
+2. Regra sazonal de 13o + abono de 15% para tipo `A` em dezembro (BR-006).
+3. Teto de desconto em 30% com excecao judicial (BR-008).
+4. Antiduplicidade de pagamento por competencia em lote (BR-010).
+5. Conciliacao com limite de divergencia de 0.01 e trilha de auditoria (BR-013).
 
 ### 3.2 Dependências Complexas
 
 > Quais programas estão mais acoplados? Onde há risco de efeito cascata?
 
-[Descreva]
+Os maiores pontos de acoplamento sao `PAGAMENTO` e `BENEFICIARIO`, compartilhados por grande parte dos programas. O ciclo `BATCHPGT -> PAGAMENTO -> BATCHCON -> PAGAMENTO -> RELPGT/BATCHREL` cria risco de efeito cascata: alteracao de status/campos em lote impacta conciliacao e dois tipos de relatorio. Outro ponto critico e a duplicacao de logica financeira entre `CALCBENF` e `BATCHPGT`, que pode divergir em evolucoes futuras.
 
 ### 3.3 Dívida Técnica Identificada
 
 > Que problemas no código legado vão complicar a migração?
 
-- [ ] [Problema 1]
-- [ ] [Problema 2]
-- [ ] [Problema 3]
+- [x] Constantes magicas sem regra documental (`0.347215`, cortes por centavos, regras de excecao CPF).
+- [x] Duplicacao de validacoes e calculos entre programas (CPF e formula de beneficio em mais de um modulo).
+- [x] Divergencia semantica de status entre DDM e relatorios (`X` no DDM vs `C` no relatorio de pagamentos).
 
 ### 3.4 Gaps de Documentação
 
 > O que a documentação existente NÃO cobre?
 
-[Descreva]
+Nao ha documento de negocio explicando o fator K, a origem normativa da regiao 99, nem a governanca dos prefixos especiais de CPF. Tambem nao ha matriz oficial de mapeamento de status entre `PAGAMENTO.ddm` e relatorios Natural, o que aumenta risco de interpretacao incorreta na API moderna.
 
 ---
 
@@ -94,15 +103,19 @@
 
 | ID  | Descrição | Risco para Migração |
 | --- | --------- | ------------------- |
-|     |           |                     |
+| MYS-001 | Constante de ajuste `0.347215` no cadastro de programa | Valores migrados podem divergir historicamente |
+| MYS-002 | Bypass de elegibilidade para `COD-REG=99` | Concessao incorreta ou perda de excecao legal |
+| MYS-003 | Excecao de CPF `000` como valido | Falha de controle cadastral/compliance |
+| MYS-005 | Filtro fixo remove exclusoes da trilha exibida | Auditoria incompleta no monitoramento operacional |
+| MYS-010 | Inconsistencia de codigos de status pagamento | API e relatorios modernos podem divergir |
 
 ### 4.2 Riscos para o Estágio 2
 
 > O que o time de especificação precisa saber antes de começar?
 
-1. [Risco 1]
-2. [Risco 2]
-3. [Risco 3]
+1. Especificacoes EARS sem preservar excecoes historicas (regiao 99, CPF especial, filtro de auditoria).
+2. Consolidacao incorreta de status de pagamento por conflito entre DDM e programas de relatorio.
+3. Reescrita de formulas financeiras sem reproduzir truncamentos e limiares do legado.
 
 ---
 
@@ -114,21 +127,24 @@
 
 | Prioridade | Funcionalidade | Justificativa |
 | ---------- | -------------- | ------------- |
-| 1          |                |               |
-| 2          |                |               |
-| 3          |                |               |
+| 1          | Geracao e calculo de pagamentos (`CALCBENF` + `BATCHPGT`) | Maior impacto de negocio e dependencia de todo fluxo financeiro |
+| 2          | Regras de desconto e conciliacao (`CALCDSCT` + `BATCHCON`) | Garante valor liquido correto e consistencia bancaria |
+| 3          | Elegibilidade e validacao (`VALELEG` + `VALBENEF` + `VALDOCS`) | Define quem recebe e evita concessao indevida |
 
 ### 5.2 O que descartar
 
 > Funcionalidades que provavelmente não precisam ser migradas:
 
-- [Funcionalidade]: [Motivo para descartar]
+- Bloco comentado de integracao Banco Real em `BATCHCON`: manter apenas como registro historico, sem migrar para fluxo ativo.
+- Renderizacao de relatorio com paginacao de impressora 66 linhas: nao e requisito funcional de dominio para API moderna.
 
 ### 5.3 O que evoluir
 
 > Funcionalidades que devem ser migradas E melhoradas:
 
-- [Funcionalidade]: [Como melhorar]
+- Trilha de auditoria: manter integralidade de eventos e remover filtro fixo de exclusoes na camada de apresentacao.
+- Validador de documentos: preservar excecoes legadas sob feature flag e trilha de aprovacao explicita.
+- Catalogo de status de pagamento: unificar dicionario de estados entre banco de dados, APIs e relatorios.
 
 ---
 
@@ -136,14 +152,14 @@
 
 | Métrica                       | Valor        |
 | ----------------------------- | ------------ |
-| Programas analisados          | \_\_\_ / 15  |
-| DDMs mapeados                 | \_\_\_ / 4   |
-| Regras de negócio encontradas | \_\_\_       |
-| Regras escondidas encontradas | \_\_\_ / 10  |
-| Easter eggs encontrados       | \_\_\_ / 3   |
-| Termos no glossário           | \_\_\_       |
-| Mistérios catalogados         | \_\_\_       |
-| Tempo total gasto             | \_\_\_ horas |
+| Programas analisados          | 15 / 15      |
+| DDMs mapeados                 | 4 / 4        |
+| Regras de negócio encontradas | 18           |
+| Regras escondidas encontradas | 8 / 10       |
+| Easter eggs encontrados       | 3 / 3        |
+| Termos no glossário           | 35           |
+| Mistérios catalogados         | 10           |
+| Tempo total gasto             | 3 horas      |
 
 ---
 
@@ -151,16 +167,16 @@
 
 > Deixe aqui mensagens para o time no Estágio 2 (Especificação Moderna):
 
-[Escreva aqui]
+Priorizar a escrita de EARS a partir de BR-005, BR-006, BR-008, BR-010 e BR-013, mantendo `source_legacy` com faixa de linha. Tratar as excecoes (MYS-001, MYS-002, MYS-003, MYS-005, MYS-010) como requisitos explicitos e nao como detalhes de implementacao. Definir no inicio do Estagio 2 um glossario canonicamente aceito para status de pagamento e semantica de fator K.
 
 ---
 
 ## Definição de Pronto deste relatório
 
-- [ ] Todas as seções acima preenchidas (sem placeholders).
-- [ ] Pelo menos 5 regras críticas listadas em §3.1, cada uma referenciando uma `BR-XXX` do catálogo.
-- [ ] Decisões de migrar/descartar/evoluir em §5 cobrem as 8+ funcionalidades principais.
-- [ ] Métricas de §6 conferem com os outros artefatos (glossary.md, business-rules-catalog.md, mysteries-found.md).
+- [x] Todas as seções acima preenchidas (sem placeholders).
+- [x] Pelo menos 5 regras críticas listadas em §3.1, cada uma referenciando uma `BR-XXX` do catálogo.
+- [x] Decisões de migrar/descartar/evoluir em §5 cobrem as funcionalidades principais de cadastro, elegibilidade, calculo, conciliacao e relatorios.
+- [x] Métricas de §6 conferem com os outros artefatos (glossary.md, business-rules-catalog.md, mysteries-found.md).
 
 — Paula
 

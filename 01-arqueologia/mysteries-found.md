@@ -44,32 +44,58 @@
 
 | ID      | Descrição | Onde Encontrado | Impacto Potencial | Confiança |
 | ------- | --------- | --------------- | ----------------- | --------- |
-| MYS-001 |           |                 |                   |           |
-| MYS-002 |           |                 |                   |           |
-| MYS-003 |           |                 |                   |           |
-| MYS-004 |           |                 |                   |           |
-| MYS-005 |           |                 |                   |           |
-| MYS-006 |           |                 |                   |           |
-| MYS-007 |           |                 |                   |           |
-| MYS-008 |           |                 |                   |           |
-| MYS-009 |           |                 |                   |           |
-| MYS-010 |           |                 |                   |           |
+| MYS-001 | Constante `0.347215` em `FATOR-K` sem justificativa funcional. | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L87-L88` | Distorce valor base de todos os programas cadastrados. | ALTA |
+| MYS-002 | Regiao `99` aprova elegibilidade de forma imediata (bypass das demais validacoes). | `01-arqueologia/legado-sifap/natural-programs/VALELEG.NSN#L107-L111` | Risco de concessao indevida se regra for mal migrada ou mal entendida. | ALTA |
+| MYS-003 | Excecao de CPF `000...` marcado como valido em validacao completa. | `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L195-L200` | Pode introduzir beneficiarios de teste em ambiente real. | ALTA |
+| MYS-004 | Prefixos especiais de CPF liberam validacao documental sem esclarecer governanca da lista. | `01-arqueologia/legado-sifap/natural-programs/VALDOCS.NSN#L174-L180` | Brecha de compliance documental se tabela de prefixo estiver desatualizada. | MÉDIA |
+| MYS-005 | Relatorio de auditoria omite acoes de exclusao (`EX`) por regra fixa de exibicao. | `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L105-L108` | Perda de visibilidade em trilha de auditoria e risco regulatorio. | ALTA |
+| MYS-006 | Comentario explicito de arredondamento diferente entre `BATCHREL` e `CALCBENF`. | `01-arqueologia/legado-sifap/natural-programs/BATCHREL.NSN#L117-L133` | Divergencia em totais gerenciais versus operacional financeiro. | MÉDIA |
+| MYS-007 | Mascara de CPF na consulta tem inconsistencia conhecida e orientacao de nao corrigir sem auditoria. | `01-arqueologia/legado-sifap/natural-programs/CONSBENF.NSN#L177-L188` | Exposicao de dado sensivel ou mascaramento incorreto em tela. | ALTA |
+| MYS-008 | Bloco legado de integracao Banco Real permanece comentado com regra historica. | `01-arqueologia/legado-sifap/natural-programs/BATCHCON.NSN#L213-L217` | Codigo morto aumenta risco de reativacao acidental e confusao em manutencao. | MÉDIA |
+| MYS-009 | DDM de auditoria afirma imutabilidade (`nao permite update/delete`), mas relatorio ainda filtra eventos. | `01-arqueologia/legado-sifap/adabas-ddms/AUDITORIA.ddm#L9-L12` | Pode haver desalinhamento entre obrigacao legal e visibilidade operacional. | MÉDIA |
+| MYS-010 | DDM de pagamento usa status `X=Cancelado`, enquanto relatorios usam `C` como cancelado. | `01-arqueologia/legado-sifap/adabas-ddms/PAGAMENTO.ddm#L54-L57` | Mapeamento incorreto de status pode quebrar consistencia em APIs futuras. | MÉDIA |
 
 ## Detalhamento dos Mistérios
 
-### MYS-001: [Título do Mistério]
+### MYS-001: Constante opaca no fator de programa
 
-- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/ARQUIVO.NSN#L<inicio>-L<fim>`
-- **Trecho de código**:
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L87-L88`
+- **O que esperávamos**: fator de reajuste aplicado diretamente ou por tabela parametrica.
+- **O que o código faz**: multiplica reajuste por constante `0.347215` sem fonte de negocio.
+- **Hipótese do time**: calibracao historica para compatibilizar lote antigo.
+- **Risco se ignorarmos**: pagamentos migrados com base financeira diferente do legado.
 
-```natural
-* Cole aqui o trecho relevante
-```
+### MYS-002: Bypass para regiao especial
 
-- **O que esperávamos**: [comportamento esperado]
-- **O que o código faz**: [comportamento real]
-- **Hipótese do time**: [melhor palpite]
-- **Risco se ignorarmos**: [o que pode dar errado na migração]
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/VALELEG.NSN#L107-L111`
+- **O que esperávamos**: regiao especial com regra propria, mas ainda sujeita a validacoes basicas.
+- **O que o código faz**: marca elegivel e encerra rotina imediatamente.
+- **Hipótese do time**: atendimento a publico diplomatico/internacional com regra excepcional.
+- **Risco se ignorarmos**: concessoes indevidas ou perda de excecao legal obrigatoria.
+
+### MYS-003: CPF de teste governamental
+
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L195-L200`
+- **O que esperávamos**: CPF com todos os digitos iguais sempre invalido.
+- **O que o código faz**: abre excecao para prefixo `000` e aceita como valido.
+- **Hipótese do time**: massa de homologacao historica usada tambem em producao controlada.
+- **Risco se ignorarmos**: regras de antifraude e qualidade cadastral ficam inconsistentes.
+
+### MYS-004: Prefixos especiais sem governanca clara
+
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/VALDOCS.NSN#L174-L180`
+- **O que esperávamos**: politica documentada sobre quais prefixos sao aceitos e por quem.
+- **O que o código faz**: consulta lista interna de prefixos especiais e valida sem contexto normativo.
+- **Hipótese do time**: mecanismo de excecao para operacao de emergencia/governo.
+- **Risco se ignorarmos**: aumento de falso positivo em validacao de documentos.
+
+### MYS-005: Exclusoes ocultas no relatorio de auditoria
+
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L105-L108`
+- **O que esperávamos**: trilha de auditoria exibir todas as acoes, incluindo exclusoes.
+- **O que o código faz**: filtra acao `EX` antes de imprimir qualquer registro.
+- **Hipótese do time**: reducao de volume de saida em consulta operacional.
+- **Risco se ignorarmos**: nao conformidade de auditoria e investigacoes incompletas.
 
 ---
 
@@ -79,17 +105,17 @@
 
 > Dica: existem **3 easter eggs** escondidos no código legado. Registre aqui os que encontrar:
 
-1. [ ] Easter Egg 1: \_\_\_
-2. [ ] Easter Egg 2: \_\_\_
-3. [ ] Easter Egg 3: \_\_\_
+1. [x] Easter Egg 1: Comentario historico da integracao Banco Real (adquirido em 2007) mantido no fonte (`BATCHCON.NSN#L213-L217`).
+2. [x] Easter Egg 2: Mensagem de regiao especial com atalho de elegibilidade (`VALELEG.NSN#L107-L111`).
+3. [x] Easter Egg 3: Excecao `CPF 000...` descrita como teste governo (`VALBENEF.NSN#L195-L200`).
 
 ## Resumo
 
-- Total de mistérios encontrados: \_\_\_
-- Confiança alta: \_\_\_
-- Confiança média: \_\_\_
-- Confiança baixa: \_\_\_
-- Easter eggs encontrados: \_\_\_ / 3
+- Total de mistérios encontrados: 10
+- Confiança alta: 5
+- Confiança média: 5
+- Confiança baixa: 0
+- Easter eggs encontrados: 3 / 3
 
 ---
 
