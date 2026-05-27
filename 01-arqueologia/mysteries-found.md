@@ -97,9 +97,47 @@
 - **Hipótese do time**: reducao de volume de saida em consulta operacional.
 - **Risco se ignorarmos**: nao conformidade de auditoria e investigacoes incompletas.
 
----
+### MYS-006: Divergencia em arredondamento entre batch e online
 
-> Copie o bloco acima para cada mistério encontrado.
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/BATCHREL.NSN#L117-L133`
+- **O que esperávamos**: arredondamento uniforme em toda a aplicacao para garantir totais consistentes.
+- **O que o código faz**: comentario explicito revela que `BATCHREL` arredonda para 2 casas, enquanto `CALCBENF` arredonda para 3.
+- **Hipótese do time**: legado de periodos diferentes de implantacao, possivelmente vinculado a regra contabil antiga.
+- **Risco se ignorarmos**: totais gerenciais divergentes dos valores financeiros operacionais, gerando contestacao de auditoria.
+
+### MYS-007: Inconsistencia conhecida na mascara de CPF
+
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/CONSBENF.NSN#L177-L188`
+- **O que esperávamos**: mascara de CPF aplicada uniformemente em toda tela de consulta.
+- **O que o código faz**: bloco condicional aplica mascara apenas em contexto especifico, com comentario de nao corrigir sem auditoria.
+- **Hipótese do time**: workaround historico para evitar quebrar integracao externa que esperava formato sem mascara.
+- **Risco se ignorarmos**: exposicao indevida de CPF completo em situacoes nao previstas ou mascaramento incorreto.
+
+### MYS-008: Bloco legado comentado do Banco Real
+
+- **Arquivo**: `01-arqueologia/legado-sifap/natural-programs/BATCHCON.NSN#L213-L217`
+- **O que esperávamos**: codigo morto removido ou documentado formalmente em ADR de descontinuacao.
+- **O que o código faz**: mantem bloco comentado com logica de integracao bancaria antiga (Banco Real, adquirido em 2007).
+- **Hipótese do time**: preservacao arqueologica por receio de perder conhecimento funcional ou por auditoria regulatoria.
+- **Risco se ignorarmos**: confusao em manutencao futura e risco de reativacao acidental sem contexto de negocio.
+
+### MYS-009: Desalinhamento entre imutabilidade de DDM e filtro de relatorio
+
+- **Arquivo**: `01-arqueologia/legado-sifap/adabas-ddms/AUDITORIA.ddm#L9-L12`
+- **O que esperávamos**: se DDM declara imutabilidade, relatorio deve exibir tudo sem filtro.
+- **O que o código faz**: DDM afirma que auditoria nao permite update/delete, mas relatorio ainda filtra eventos antes de exibir.
+- **Hipótese do time**: desalinhamento entre obrigacao legal (imutabilidade) e pratica operacional (filtro por conveniencia).
+- **Risco se ignorarmos**: auditoria legal incompleta se filtro esconder eventos relevantes para investigacao.
+
+### MYS-010: Inconsistencia de status entre DDM e relatorios
+
+- **Arquivo**: `01-arqueologia/legado-sifap/adabas-ddms/PAGAMENTO.ddm#L54-L57`
+- **O que esperávamos**: unificacao de codigo de status em toda a aplicacao.
+- **O que o código faz**: DDM define `X=Cancelado`, mas relatorios operacionais usam `C` como cancelado.
+- **Hipótese do time**: evolucao historica de convencao de status sem sincronizacao entre camadas.
+- **Risco se ignorarmos**: mapeamento incorreto em APIs REST futuras, quebrando consistencia de dominio em bounded context Payment.
+
+---
 
 ## Easter Eggs
 
