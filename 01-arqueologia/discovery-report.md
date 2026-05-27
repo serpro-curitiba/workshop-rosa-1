@@ -146,6 +146,41 @@ Nao ha documento de negocio explicando o fator K, a origem normativa da regiao 9
 - Validador de documentos: preservar excecoes legadas sob feature flag e trilha de aprovacao explicita.
 - Catalogo de status de pagamento: unificar dicionario de estados entre banco de dados, APIs e relatorios.
 
+### 5.4 Matriz de Rastreabilidade BR → DDM → Entity
+
+> Referencia pratica para o Estagio 3. A matriz abaixo ajuda a converter regras do legado em entidades JPA e relacionamentos relacionais sem perder o contexto de origem.
+
+| BR-ID | DDMs Afetados | Entidade JPA Sugerida | Relacionamentos / Observações |
+| ----- | ------------- | --------------------- | ----------------------------- |
+| BR-001 | BENEFICIARIO | BeneficiaryEntity | CPF e dados cadastrais concentram a validacao inicial. |
+| BR-002 | BENEFICIARIO | BeneficiaryEntity | Status do beneficiario e idade vivem no mesmo agregado. |
+| BR-003 | BENEFICIARIO | BeneficiaryEntity + DependentEntity | `GRP-DEPENDENTE` vira relacionamento `OneToMany`. |
+| BR-004 | PROGRAMA-SOCIAL | ProgramEntity | Fator K e valores base permanecem no cadastro de programa. |
+| BR-005 | BENEFICIARIO, PROGRAMA-SOCIAL, PAGAMENTO | PaymentEntity | Calcula o valor mensal a partir de dados do beneficiario e do programa. |
+| BR-006 | PROGRAMA-SOCIAL, PAGAMENTO | PaymentEntity | Regra sazonal de dezembro influencia o valor bruto do pagamento. |
+| BR-007 | PAGAMENTO | PaymentEntity | Indicadores de correcao e datas de ajuste ficam no historico de pagamento. |
+| BR-008 | PAGAMENTO, BENEFICIARIO | PaymentEntity + DiscountEntity | `GRP-DESCONTO` vira tabela filha `payment_discount`. |
+| BR-010 | BENEFICIARIO, PAGAMENTO | PaymentEntity | Antiduplicidade depende da competencia e da existencia de pagamento previo. |
+| BR-011 | PAGAMENTO | PaymentEntity | Desconto simplificado e regra paralela de calculo em lote. |
+| BR-013 | PAGAMENTO, AUDITORIA | PaymentEntity + AuditEntity | Conciliacao gera trilha de auditoria para divergencias e confirmacoes. |
+| BR-014 | BENEFICIARIO, PROGRAMA-SOCIAL | EligibilityEntity | Regiao especial 99 deve virar regra explicita de elegibilidade. |
+| BR-015 | BENEFICIARIO, PROGRAMA-SOCIAL | EligibilityEntity | Renda, dependentes e documentos compoem a decisao de elegibilidade. |
+| BR-016 | BENEFICIARIO | BeneficiaryEntity | Excecao de CPF especial deve ser preservada como regra de validacao. |
+| BR-017 | BENEFICIARIO | DocumentValidationPolicy | Lista especial de prefixos deve ficar separada da entidade principal. |
+| BR-018 | AUDITORIA | AuditEntity | Regra de exibicao de eventos de exclusao e responsabilidade da camada de consulta. |
+
+**Conversoes estruturais a observar:**
+
+- `BENEFICIARIO.GRP-DEPENDENTE` (PE) sugere uma tabela filha para dependentes.
+- `PAGAMENTO.GRP-DESCONTO` (PE) sugere uma tabela filha para descontos aplicados.
+- `AUDITORIA` permanece como trilha append-only, sem update/delete de dominio.
+
+**Uso esperado no Estagio 3:**
+
+- O Par 3 pode usar esta matriz para dividir `Entity`, `Repository` e `Service` por agregado.
+- O Par 2 pode usar o mapeamento para definir bounded contexts e fronteiras de persistencia.
+- O Par 1 pode usar a matriz para priorizar quais regras precisam de `source_legacy` mais detalhado nas EARS.
+
 ---
 
 ## 6. Métricas do Estágio
