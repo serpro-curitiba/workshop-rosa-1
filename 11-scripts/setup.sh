@@ -90,11 +90,21 @@ if [ ! -d "reference/workshop-datacorp" ]; then
   clone_or_pull "$WORKSHOP_REPO" "reference/workshop-datacorp"
 fi
 
-# Symlink the parts teams need most.
-# 01-arqueologia/legado-sifap/ is bundled with the kit (real folder); only link prototype/ and infra/.
-ln -sfn "../reference/workshop-datacorp/04-prototipo-sifap-moderno" prototype 2>/dev/null || true
-ln -sfn "../reference/workshop-datacorp/05-terraform-azure" infra 2>/dev/null || true
-ok "Linked prototype/, infra/ (01-arqueologia/legado-sifap/ already bundled in kit)"
+# Cria symlinks apenas se a pasta não existir como diretório real.
+# Se o builder agent já gerou fontes em prototype/ ou infra/, preserva o conteúdo.
+if [ ! -d "prototype" ] || [ -L "prototype" ]; then
+  ln -sfn "../reference/workshop-datacorp/04-prototipo-sifap-moderno" prototype 2>/dev/null || true
+  ok "Linked prototype/ → reference"
+else
+  warn "prototype/ é pasta real com fontes — symlink ignorado (conteúdo preservado)"
+fi
+
+if [ ! -d "infra" ] || [ -L "infra" ]; then
+  ln -sfn "../reference/workshop-datacorp/05-terraform-azure" infra 2>/dev/null || true
+  ok "Linked infra/ → reference"
+else
+  warn "infra/ é pasta real com fontes — symlink ignorado (conteúdo preservado)"
+fi
 
 # 3. Initialize specs/ for Spec-Kit
 echo

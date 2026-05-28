@@ -61,7 +61,7 @@ Sua resposta final deve incluir:
 > | Beneficiário ativo ainda recebe desembolso (regressão) | `shouldDisburseWhenBeneficiaryActive` |
 > | Limite: `status=PENDING` não é "suspended" | `shouldDisburseWhenBeneficiaryPending` |
 >
-> Arquivo: `backend/src/test/java/br/gov/sifap/payments/PaymentServiceTest.java`
+> Arquivo: `prototype/backend/src/test/java/br/gov/sifap/payments/PaymentServiceTest.java`
 >
 > ```java
 > @Tag("REQ-PAY-014")

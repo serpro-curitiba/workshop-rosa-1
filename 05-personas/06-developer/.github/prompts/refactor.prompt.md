@@ -16,7 +16,7 @@ Você está melhorando a estrutura interna do código do SIFAP 2.0 sem alterar o
 
 Peça ao usuário qualquer item que esteja faltando.
 
-- O arquivo, pacote ou componente alvo (por exemplo `backend/src/main/java/br/gov/sifap/payments/PaymentService.java`).
+- O arquivo, pacote ou componente alvo (por exemplo `prototype/backend/src/main/java/br/gov/sifap/payments/PaymentService.java`).
 - A motivação: code smell observado (long method, duplicação, primitive obsession, feature envy etc.).
 - Quaisquer restrições de `DESIGN.md` ou ADRs que limitem seus movimentos (por exemplo "controllers devem permanecer finos").
 - A cobertura de testes atual da área (execute um relatório de cobertura se desconhecida).

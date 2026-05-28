@@ -24,8 +24,8 @@ jobs:
           globs: |
             **/*.md
             !node_modules
-            !backend/target
-            !frontend/.next
+            !prototype/backend/target
+            !prototype/frontend/.next
 
   spec-traceability:
     name: REQ-ID traceability check
@@ -38,7 +38,7 @@ jobs:
           if [ -d "specs" ]; then
             echo "Checking REQ-ID traceability across specs/ and source/test files..."
             grep -rE "REQ-[A-Z]+-[0-9]+" specs/ -h | grep -oE "REQ-[A-Z]+-[0-9]+" | sort -u > /tmp/reqs-spec.txt || true
-            grep -rE "@implements REQ-[A-Z]+-[0-9]+|REQ-[A-Z]+-[0-9]+" backend/src frontend 2>/dev/null | grep -oE "REQ-[A-Z]+-[0-9]+" | sort -u > /tmp/reqs-code.txt || true
+            grep -rE "@implements REQ-[A-Z]+-[0-9]+|REQ-[A-Z]+-[0-9]+" prototype/backend/src prototype/frontend 2>/dev/null | grep -oE "REQ-[A-Z]+-[0-9]+" | sort -u > /tmp/reqs-code.txt || true
             comm -23 /tmp/reqs-spec.txt /tmp/reqs-code.txt > /tmp/missing.txt || true
             if [ -s /tmp/missing.txt ]; then
               echo "::warning::REQ-IDs declared in specs/ but not referenced in code:"
@@ -76,7 +76,7 @@ jobs:
               /REQ-[A-Z]+-[0-9]+/ {
                 req=$0; line=NR; found=0;
                 for (i=1; i<=20 && (getline nxt)>0; i++) {
-                  if (nxt ~ /source_01-arqueologia/legado-sifap/) { found=1; break }
+                  if (nxt ~ /source_legacy:/ && (nxt ~ /01-arqueologia\/legado-sifap/ || nxt ~ /\[GREENFIELD\]/)) { found=1; break }
                   if (nxt ~ /^REQ-[A-Z]+-[0-9]+/) break
                 }
                 if (!found) print FILENAME ":" line ": " req

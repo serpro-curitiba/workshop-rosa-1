@@ -16,7 +16,7 @@ Você é um QA Engineer auditando a cobertura de testes no SIFAP 2.0. Sua saída
 
 Peça ao usuário o que estiver faltando.
 
-- A pasta da feature (`specs/<NNN>-<feature>/`) e as pastas de implementação (`backend/src/main/java/...` e/ou `frontend/app/...`).
+- A pasta da feature (`specs/<NNN>-<feature>/`) e as pastas de implementação (`prototype/backend/src/main/java/...` e/ou `prototype/frontend/app/...`).
 - Um relatório de cobertura recente (JaCoCo XML para backend, Vitest LCOV para frontend) — ou permissão para gerar um.
 - O escopo de aceitação: "todos os REQ-IDs desta pasta", "somente o diff deste PR" ou "somente o conjunto regulatório `REQ-COMP-*`".
 
@@ -59,7 +59,7 @@ Um relatório em markdown com a seguinte estrutura:
 
 ## Exemplo trabalhado
 
-**Entrada:** "Audite `specs/003-payment-processing/` em relação a `backend/src/.../payments/`."
+**Entrada:** "Audite `specs/003-payment-processing/` em relação a `prototype/backend/src/.../payments/`."
 
 **Esqueleto de saída esperado:**
 

@@ -31,12 +31,9 @@ jobs:
         with:
           filters: |
             backend:
-              - 'backend/**'
-              - 'pom.xml'
+              - 'prototype/backend/**'
             frontend:
-              - 'frontend/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
+              - 'prototype/frontend/**'
             infra:
               - 'infra/**'
               - '**/*.tf'
@@ -48,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: prototype/backend
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -64,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: backend/target/site/jacoco/
+          path: prototype/backend/target/site/jacoco/
 
   frontend:
     name: Frontend (Next.js 15 + TypeScript)
@@ -73,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: prototype/frontend
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node 20

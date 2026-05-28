@@ -55,9 +55,9 @@ Sua resposta final deve incluir, nesta ordem:
 **Estrutura esperada da resposta:**
 
 > Arquivos alterados:
-> - `backend/src/main/java/br/gov/sifap/beneficiaries/BeneficiaryService.java` (modificado — adicionada emissão de auditoria)
-> - `backend/src/main/java/br/gov/sifap/audit/AuditLogger.java` (novo — port)
-> - `backend/src/test/java/br/gov/sifap/beneficiaries/BeneficiaryServiceTest.java` (modificado — novo teste)
+> - `prototype/backend/src/main/java/br/gov/sifap/beneficiaries/BeneficiaryService.java` (modificado — adicionada emissão de auditoria)
+> - `prototype/backend/src/main/java/br/gov/sifap/audit/AuditLogger.java` (novo — port)
+> - `prototype/backend/src/test/java/br/gov/sifap/beneficiaries/BeneficiaryServiceTest.java` (modificado — novo teste)
 >
 > O que eu NÃO alterei:
 > - Validação de `BeneficiaryController` (`REQ-BEN-002` não relacionado)

@@ -30,6 +30,21 @@
 > - **Quando usar Plan vs Agent?** [`../09-cheat-sheets/copilot-3-modes.md`](../09-cheat-sheets/copilot-3-modes.md). Para features pequenas, Plan; Agent fica para o Estágio 4.
 > - **Travou no setup?** Vá direto à seção `Troubleshooting` mais abaixo.
 
+> [!IMPORTANT]
+> **Contexto desta equipe — leia antes do guia abaixo.**
+> Este guia foi escrito assumindo que `setup.sh` criou um symlink `prototype/` apontando para um
+> protótipo de referência pré-construído. **Neste repositório o fluxo é diferente: o código é
+> gerado do zero pelo @builder a partir das specs.** As seguintes premissas do guia NÃO se aplicam:
+>
+> | O que o guia diz | O que vale neste repo |
+> |---|---|
+> | "O protótipo já tem a estrutura base" | `prototype/backend/` começa vazio — o builder gera tudo |
+> | `cd 04-prototipo-sifap-moderno/backend` | `cd prototype/backend` |
+> | Package `br.gov.client.sifap` | Package `com.sifap` (conforme `specs/002-sifap-spec-moderna/plan.md`) |
+> | 4 módulos (beneficiary, payment, audit, admin) | 5 módulos: + `eligibility`, `program`; sem `admin` |
+>
+> Tudo mais no guia (arquitetura de camadas, Flyway, Testcontainers, rastreabilidade REQ-ID) permanece válido.
+
 ## ⛳ Definition of Ready — antes de começar
 
 > [!IMPORTANT]
@@ -48,7 +63,7 @@
 
 ## Objetivo
 
-Estender o protótipo funcional do SIFAP 2.0 implementando as features priorizadas no Estágio 2. O protótipo já tem a estrutura base — seu time vai **adicionar features, corrigir bugs e escrever testes**. Cada feature precisa rastrear até uma REQ-ID.
+Construir o SIFAP 2.0 a partir do zero, implementando as features especificadas no Estágio 2 em `prototype/backend/` e `prototype/frontend/`. Cada feature precisa rastrear até uma REQ-ID.
 
 ## Por que isso importa
 
@@ -56,13 +71,13 @@ O Estágio 3 é onde a spec encontra a realidade. EARS escrita bonita no Estági
 
 ## Como pensar nisso
 
-Pense no protótipo como uma **cozinha aberta**: a estrutura está pronta (forno, geladeira, ingredientes), faltam pratos. Não reorganize a cozinha; cozinhe.
+Pense nas specs como uma **planta de obra**: o @builder lê `spec.md`, `plan.md` e `tasks.md` e constrói cada peça em ordem — foundation primeiro, depois módulos de negócio.
 
-- O backend já tem 4 módulos (`beneficiary`, `payment`, `audit`, `admin`) com camadas `domain` / `application` / `infrastructure`.
-- O frontend já tem layout, rotas básicas e Server Components.
-- O banco já tem schema inicial via Flyway.
+- O backend tem 5 módulos a criar: `beneficiary`, `payment`, `eligibility`, `program`, `audit` — camadas `domain` / `application` / `infrastructure`.
+- O frontend é gerado em `prototype/frontend/` com Next.js 15 App Router.
+- O schema começa vazio; Flyway aplica as migrations a partir do `V1__init_schema.sql`.
 
-Sua tarefa: pegar as REQ-IDs do Estágio 2 e transformar cada uma em **endpoint + service + repository + migração + teste**. Não invente arquitetura nova no meio do estágio.
+Sua tarefa: pegar as REQ-IDs do Estágio 2 e transformar cada uma em **endpoint + service + repository + migração + teste**. Siga a arquitetura definida nos ADRs — não invente estrutura nova.
 
 ---
 
@@ -71,7 +86,7 @@ Sua tarefa: pegar as REQ-IDs do Estágio 2 e transformar cada uma em **endpoint 
 ### 1. Suba o ambiente
 
 ```bash
-# No raiz do repositório (04-prototipo-sifap-moderno/)
+# No raiz do repositório (onde está o docker-compose.yml)
 docker compose up -d
 ```
 
@@ -79,10 +94,7 @@ Isso sobe:
 
 - **PostgreSQL 16** na porta 5432
 - **Backend (Java 21 + Spring Boot 3)** na porta 8080
-- **Frontend (Next.js 15)** na porta **3000** (local) ou **3001** (docker-compose do root)
-
-> [!WARNING]
-> Se você rodou `docker compose up` no **ROOT** do workspace (recomendado), o frontend está em **`http://localhost:3001`**. Se rodou de dentro de `04-prototipo-sifap-moderno/`, está em **`http://localhost:3000`**.
+- **Frontend (Next.js 15)** na porta **3001**
 
 ### 2. Verifique que tudo está no ar
 
@@ -111,30 +123,32 @@ Abra http://localhost:8080/swagger-ui.html e teste:
 
 ## Estrutura do Backend
 
-O backend segue uma arquitetura **modular monolith** com 4 módulos e 3 camadas cada:
+O backend segue uma arquitetura **modular monolith** com 5 módulos e 3 camadas cada (conforme `specs/002-sifap-spec-moderna/plan.md §1`):
 
 ```
-src/main/java/br/gov/client/sifap/
+prototype/backend/src/main/java/com/sifap/
 │
-├── beneficiary/ # Módulo: Beneficiários
-│ ├── domain/ # Entidades e regras de negócio
-│ ├── application/ # Services e DTOs
-│ └── infrastructure/ # Controllers, Repositories, JPA Entities
-│
-├── payment/ # Módulo: Pagamentos
-│ ├── domain/
-│ ├── application/
-│ └── infrastructure/
-│
-├── audit/ # Módulo: Auditoria
-│ ├── domain/
-│ ├── application/
-│ └── infrastructure/
-│
-└── admin/ # Módulo: Administração
- ├── domain/
- ├── application/
- └── infrastructure/
+├── shared/              # Shared kernel (Money, PaymentStatus, AuditEventPublisher)
+├── beneficiary/         # Módulo: Beneficiários
+│   ├── domain/
+│   ├── application/
+│   └── infrastructure/
+├── payment/             # Módulo: Pagamentos
+│   ├── domain/
+│   ├── application/
+│   └── infrastructure/
+├── eligibility/         # Módulo: Elegibilidade
+│   ├── domain/
+│   ├── application/
+│   └── infrastructure/
+├── program/             # Módulo: Programas (FATOR_K)
+│   ├── domain/
+│   ├── application/
+│   └── infrastructure/
+└── audit/               # Módulo: Auditoria (append-only)
+    ├── domain/
+    ├── application/
+    └── infrastructure/
 ```
 
 ### Camadas (de dentro para fora)
@@ -231,7 +245,7 @@ Para implementar features rapidamente:
 ### Rodar todos os testes
 
 ```bash
-cd 04-prototipo-sifap-moderno/backend
+cd prototype/backend
 ./mvnw test
 ```
 
@@ -255,7 +269,7 @@ cd 04-prototipo-sifap-moderno/backend
 ### Rodar o frontend localmente
 
 ```bash
-cd 04-prototipo-sifap-moderno/frontend
+cd prototype/frontend
 npm install
 npm run dev
 ```
@@ -267,16 +281,14 @@ Abra http://localhost:3000
 O frontend usa **Next.js 15 com App Router** e **Server Components**:
 
 ```
-src/app/
-├── layout.tsx # Layout raiz
-├── page.tsx # Página inicial
-├── (auth)/
-│ └── login/page.tsx # Login
-└── (dashboard)/
- ├── beneficiaries/ # CRUD de beneficiários
- ├── payments/ # CRUD de pagamentos
- ├── audit/ # Logs de auditoria
- └── admin/ # Gestão de usuários
+prototype/frontend/app/
+├── layout.tsx
+├── (auth)/login/page.tsx
+├── dashboard/page.tsx
+├── beneficiaries/
+├── payments/
+├── audit/
+└── programs/
 ```
 
 ### Padrão Server Components

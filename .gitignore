@@ -1,6 +1,6 @@
-# Reference materials cloned by scripts/setup.sh — never commit these.
-# Note: legado-natural/ is bundled with the kit (real folder) and IS committed.
-# reference/
+# reference/ — clonado por setup.sh, nunca commitar (conteúdo externo read-only)
+reference/
+# prototype/ e infra/ são pastas reais com fontes do projeto — SÃO commitados
 # prototype
 # infra
 
