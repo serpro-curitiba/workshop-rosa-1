@@ -10,7 +10,7 @@
 ## 1. Estrutura do Projeto
 
 ```
-sifap-backend/
+prototype/backend/
   src/main/java/com/sifap/
     shared/                          ← shared-kernel
       domain/

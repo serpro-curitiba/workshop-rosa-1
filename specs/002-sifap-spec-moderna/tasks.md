@@ -3,7 +3,7 @@
 > Gerado por: @architect via /speckit.tasks
 > Data: 27/05/2026
 > Para: @builder · Par 3 (Technical Lead + Developer) · Par 4 (DBA + QA)
-> Pré-requisito: prototipo/ rodando + Flyway migrations aplicadas
+> Pré-requisito: `prototype/backend/` e `prototype/frontend/` começam vazios — o builder gera tudo a partir do zero. FASE 0 cria o `pom.xml` e a estrutura base antes de qualquer outra fase.
 
 ---
 
