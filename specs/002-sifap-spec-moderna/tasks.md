@@ -38,6 +38,29 @@
 - **REQ:** REQ-STATUS-001 (ADR-004)
 - **Aceite:** `PaymentStatus.valueOf("X")` lança `IllegalArgumentException` (sem alias)
 
+### TASK-003b · Enum ProgramType no shared kernel
+- [ ] Criar `com/sifap/shared/domain/ProgramType.java`
+- [ ] Valores: `ASSISTENCIAL` (código legado 'A', dispara 13º e regra de renda) e `CONTRIBUTIVO`
+- [ ] Este tipo é compartilhado entre `payment` e `eligibility` — nunca importar `program.*` nos contextos que o usam
+- **REQ:** REQ-PAY-002, REQ-ELEG-002
+- **Aceite:** `PaymentCalculationService` e `AssistentialIncomeRule` importam apenas `com.sifap.shared.domain.ProgramType`
+
+### TASK-003c · Enum BeneficiaryStatus no shared kernel
+- [ ] Criar `com/sifap/shared/domain/BeneficiaryStatus.java`
+- [ ] Valores: `ACTIVE, SUSPENDED, INACTIVE, CANCELLED`
+- [ ] Deve coincidir com o ENUM PostgreSQL `beneficiary_status` definido em `V1__init_schema.sql` (TASK-004)
+- **REQ:** REQ-BEN-002 (auto-suspensão), REQ-BEN-003 (bloqueio de dependente em CANCELLED)
+- **Aceite:** `@Enumerated(EnumType.STRING)` em `BeneficiaryEntity.status` mapeia sem erro; status `CANCELLED` bloqueia criação de dependente (testado em TASK-017)
+
+### TASK-003d · GlobalExceptionHandler (@RestControllerAdvice)
+- [ ] Criar `com/sifap/shared/web/GlobalExceptionHandler.java`
+- [ ] `EntityNotFoundException` → HTTP 404 `{ "error": "...", "entityId": "..." }`
+- [ ] `DuplicateEntityException`, `DiscountCapExceededException`, `DependentLimitExceededException` → HTTP 409
+- [ ] `MethodArgumentNotValidException`, `ConstraintViolationException` → HTTP 400 com lista de field errors
+- [ ] Nunca expor stack trace — apenas mensagem sanitizada (REQ-SEC-001)
+- **REQ:** REQ-SEC-001, ADR-003
+- **Aceite:** `EntityNotFoundException` lançada em qualquer controller → 404 JSON sem stack trace; `DiscountCapExceededException` → 409
+
 ### TASK-004 · Flyway V1 — schema base
 - [ ] Criar `resources/db/migration/V1__init_schema.sql` (conteúdo em `plan.md §2`)
 - [ ] Verificar `UNIQUE (beneficiary_id, reference_year_month)` na tabela `payment`
@@ -81,7 +104,7 @@
 - [ ] Criar `com/sifap/payment/application/PaymentCalculationService.java`
 - [ ] Implementar fórmula multiparamétrica (ver `02-spec-moderna/SPECIFICATION.md §7`)
 - [ ] Usar `Money.of()` em cada etapa — nunca BigDecimal direto
-- [ ] Para dezembro e programa tipo 'A': adicionar 13º + abono 15%
+- [ ] Para dezembro e `ProgramType.ASSISTENCIAL` (código 'A' no legado): adicionar 13º + abono 15% — usar `com.sifap.shared.domain.ProgramType` (TASK-003b)
 - **REQ:** REQ-PAY-001, REQ-PAY-002
 - **Aceite:** 10 casos CSV em `test-data/payment-calculation-legacy-cases.csv` passam
 
@@ -129,7 +152,7 @@
 ## FASE 2 — Módulo `beneficiary`
 
 ### TASK-015 · BeneficiaryEntity + DependentEntity + Repositories
-- [ ] Criar `com/sifap/beneficiary/domain/BeneficiaryEntity.java`
+- [ ] Criar `com/sifap/beneficiary/domain/BeneficiaryEntity.java`; campo `status` do tipo `com.sifap.shared.domain.BeneficiaryStatus` (TASK-003c)
 - [ ] Criar `com/sifap/beneficiary/domain/DependentEntity.java`
 - [ ] `@OneToMany(mappedBy="beneficiary", cascade=ALL)` + `@PrePersist` para auto-suspensão >75 anos
 - **REQ:** REQ-BEN-001, REQ-BEN-002, REQ-BEN-003
@@ -166,7 +189,7 @@
 ### TASK-019 · EligibilityRule interface + implementações (Strategy)
 - [ ] Criar `com/sifap/eligibility/domain/EligibilityRule.java` (interface funcional)
 - [ ] Criar `RegionSpecialRule.java`: se `codRegion == 99` → APPROVED + motivo `REGIAO_ESPECIAL_99`
-- [ ] Criar `AssistentialIncomeRule.java`: se programa ASSISTENCIAL && renda > 600 && dependentes == 0 → REJECTED
+- [ ] Criar `AssistentialIncomeRule.java`: se `ProgramType.ASSISTENCIAL` && renda > 600 && dependentes == 0 → REJECTED; usar `com.sifap.shared.domain.ProgramType` (TASK-003b)
 - [ ] Criar `EligibilityRuleChain.java`: executar regras em ordem; primeira que decidir ganha
 - **REQ:** REQ-ELEG-001, REQ-ELEG-002
 - **Aceite:** região 99 + renda R$10000 → APPROVED; ASSISTENCIAL + R$700 + 0 deps → REJECTED
@@ -320,7 +343,7 @@
 
 | Fase | Tasks | Responsável sugerido | Prioridade |
 |------|-------|---------------------|------------|
-| Foundation | TASK-001 a TASK-006 | Tech Lead (Par 3A) | P0 — dia 1 manhã |
+| Foundation | TASK-001 a TASK-006 + TASK-003b/c/d | Tech Lead (Par 3A) | P0 — dia 1 manhã |
 | payment | TASK-007 a TASK-014 | Developer (Par 3B) + DBA (Par 4A) | P0 — dia 1 tarde |
 | beneficiary | TASK-015 a TASK-018 | Developer (Par 3B) | P0 — dia 1 tarde |
 | eligibility | TASK-019, TASK-020 | Developer (Par 3B) | P0 — dia 2 manhã |
@@ -338,7 +361,7 @@
 | REQ-ID | Task(s) |
 |--------|---------|
 | REQ-PAY-001 | TASK-009, TASK-013, TASK-014 |
-| REQ-PAY-002 | TASK-009, TASK-014 |
+| REQ-PAY-002 | TASK-003b, TASK-009, TASK-014 |
 | REQ-PAY-003 | TASK-012 |
 | REQ-PAY-004 | TASK-010, TASK-013 |
 | REQ-PAY-005 | TASK-010, TASK-013 |
@@ -346,17 +369,17 @@
 | REQ-PAY-007 | TASK-025 |
 | REQ-PAY-008 | TASK-011, TASK-026 |
 | REQ-BEN-001 | TASK-016, TASK-017, TASK-018 |
-| REQ-BEN-002 | TASK-015, TASK-017 |
-| REQ-BEN-003 | TASK-017, TASK-018 |
+| REQ-BEN-002 | TASK-003c, TASK-015, TASK-017 |
+| REQ-BEN-003 | TASK-003c, TASK-017, TASK-018 |
 | REQ-BEN-004 | TASK-016 |
 | REQ-BEN-005 | TASK-016 |
 | REQ-PROG-001 | TASK-021, TASK-032 |
 | REQ-PROG-002 | TASK-002, TASK-009 |
 | REQ-ELEG-001 | TASK-019, TASK-020 |
-| REQ-ELEG-002 | TASK-019, TASK-020 |
+| REQ-ELEG-002 | TASK-003b, TASK-019, TASK-020 |
 | REQ-AUD-001 | TASK-004, TASK-023, TASK-035 |
 | REQ-AUD-002 | TASK-024, TASK-031 |
 | REQ-AUD-003 | TASK-006, TASK-023 |
-| REQ-SEC-001 | TASK-001, TASK-035 |
+| REQ-SEC-001 | TASK-001, TASK-003d, TASK-035 |
 | REQ-STATUS-001 | TASK-003 |
 | REQ-HIST-001 | TASK-018, TASK-029 |

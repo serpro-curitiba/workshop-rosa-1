@@ -122,6 +122,13 @@ REQ-BEN-005:
          aceitar sem validação módulo 11."
   source_legacy: 01-arqueologia/legado-sifap/natural-programs/VALDOCS.NSN#L174-L180
   priority: P1
+
+REQ-HIST-001:
+  pattern: event-driven
+  text: "Quando histórico de pagamentos solicitado para um beneficiário, o SIFAP
+         deve retornar os últimos 12 pagamentos ordenados por competência decrescente."
+  source_legacy: 01-arqueologia/legado-sifap/natural-programs/CONSBENF.NSN
+  priority: P1
 ```
 
 ### Módulo `program`
@@ -216,6 +223,8 @@ REQ-STATUS-001:
 - CPF inválido → HTTP 400; CPF 000...000 → HTTP 400 (sem exceção)
 - Beneficiário 78 anos → status SUSPENDED ao salvar
 - 6º dependente → HTTP 409; dependente em CANCELLED → HTTP 409
+- Beneficiário com 15 pagamentos → `GET .../payments` retorna exatamente 12 ordenados desc
+- Beneficiário sem pagamentos → lista vazia `[]` (não 404)
 
 ### eligibility
 - COD-REGIAO=99, renda R$ 10000 → APROVADO com motivo REGIAO_ESPECIAL_99
