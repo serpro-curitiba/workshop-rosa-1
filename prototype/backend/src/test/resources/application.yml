@@ -1,0 +1,3 @@
+sifap:
+  security:
+    enabled: false

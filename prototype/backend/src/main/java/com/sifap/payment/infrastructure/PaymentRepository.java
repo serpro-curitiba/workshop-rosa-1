@@ -1,0 +1,15 @@
+package com.sifap.payment.infrastructure;
+
+import com.sifap.payment.domain.PaymentEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
+
+    Optional<PaymentEntity> findByBeneficiaryIdAndReferenceYearMonth(UUID beneficiaryId, String referenceYearMonth);
+
+    List<PaymentEntity> findAllByReferenceYearMonthOrderByCreatedAtAsc(String referenceYearMonth);
+}

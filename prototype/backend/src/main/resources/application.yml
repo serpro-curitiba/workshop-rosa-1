@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: sifap-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sifap}
+    username: ${SPRING_DATASOURCE_USERNAME:sifap}
+    password: ${SPRING_DATASOURCE_PASSWORD:sifap_local}
+  flyway:
+    enabled: true
+  batch:
+    job:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+sifap:
+  security:
+    enabled: ${SIFAP_SECURITY_ENABLED:true}
+    jwt-secret: ${SIFAP_SECURITY_JWT_SECRET:local-dev-jwt-secret-at-least-32-bytes}
+  payment:
+    fator-k: ${SIFAP_FATOR_K:0.347215}

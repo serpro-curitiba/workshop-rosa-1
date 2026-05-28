@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:sifap;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+  flyway:
+    locations: classpath:db/migration-h2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+sifap:
+  security:
+    enabled: false
