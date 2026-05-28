@@ -404,3 +404,79 @@ sifap:
 | CPF prefixo 000 | Massa de teste histórica em produção. Eliminar — usar CPFs válidos de homologação. | MYS-003 |
 | Filtro EX auditoria | Redução de volume operacional. Remover filtro fixo; filtrar na UI se necessário. | MYS-005 |
 | Arredondamento BATCHREL vs CALCBENF | BATCHREL usa 2 casas, CALCBENF usa 3. Unificar em 2 casas (DOWN). | MYS-006 |
+
+---
+
+## 9. Infraestrutura Docker
+
+### 9.1 Decisões de imagem base
+
+| Stage | Imagem | Motivo |
+|-------|--------|--------|
+| **build** | `eclipse-temurin:21-jdk-alpine` | JDK completo para `./mvnw package`; Alpine reduz tempo de pull |
+| **runtime** | `eclipse-temurin:21-jre-alpine` | Somente JRE (~120 MB menor que JDK); sem ferramentas de compilação em produção |
+
+> **Sem dependência de `JAVA_HOME` do host.** O JDK vem exclusivamente da imagem base.
+> Variáveis do host (`JAVA_HOME`, `PATH` local) são ignoradas pelo daemon Docker.
+
+### 9.2 Estratégia multi-stage
+
+```
+Stage 1 — build
+  └── eclipse-temurin:21-jdk-alpine
+      ├── Copia .mvn/ + mvnw + pom.xml  → baixa dependências (cache layer)
+      ├── Copia src/                     → compila e empacota
+      └── Produz target/*.jar
+
+Stage 2 — runtime
+  └── eclipse-temurin:21-jre-alpine
+      ├── Cria usuário não-root "sifap"
+      ├── Copia apenas o *.jar do Stage 1
+      └── ENTRYPOINT java -jar app.jar
+```
+
+A separação em dois stages garante que o JDK, o Maven e o cache `~/.m2` **não entram na imagem final**.
+
+### 9.3 Dockerfile — `prototype/backend/Dockerfile`
+
+```dockerfile
+# ── Stage 1: build ───────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+
+# Copia o wrapper e o POM antes do código-fonte para maximizar cache de camadas.
+# Se apenas src/ mudar, o `dependency:go-offline` não é re-executado.
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline -q
+
+# Compila e empacota; testes são responsabilidade do pipeline CI (TASK-037).
+COPY src ./src
+RUN ./mvnw package -DskipTests -q
+
+# ── Stage 2: runtime ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine AS runtime
+WORKDIR /app
+
+# Usuário não-root — princípio do menor privilégio (OWASP A05)
+RUN addgroup -S sifap && adduser -S sifap -G sifap
+USER sifap
+
+# Copia apenas o JAR final; nada do JDK ou do Maven entra aqui
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+# JVM flags recomendadas para containers: usa cgroup limits e imprime GC info
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-jar", "app.jar"]
+```
+
+### 9.4 Critérios de aceite (TASK-038 expandida)
+
+- `docker compose build backend` conclui sem erros partindo de `prototype/backend/` vazio de artefatos locais
+- A imagem final **não contém** `javac`, `mvn` nem o diretório `~/.m2`
+- `docker compose up` → backend responde em `http://localhost:8080/actuator/health` com `{"status":"UP"}`
+- Trocar o JDK na máquina do desenvolvedor **não afeta** o build (sem `JAVA_HOME` no `docker-compose.yml`)
