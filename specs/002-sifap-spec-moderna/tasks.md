@@ -126,7 +126,7 @@
 
 ### TASK-012 · CorrectionService — retroativo (REQ-PAY-003)
 - [ ] Criar `com/sifap/payment/application/CorrectionService.java`
-- [ ] Só corrige se `status == APPROVED && corrected == false && delta > 0`
+- [ ] Só corrige se `status == PaymentStatus.APPROVED && corrected == false && delta > 0`
 - [ ] Marca `corrected = true` após aplicar
 - **REQ:** REQ-PAY-003
 - **Aceite:** chamar 2x mesma correção → segunda chamada não altera valor (idempotente)
@@ -167,8 +167,8 @@
 
 ### TASK-017 · BeneficiaryService — regras de negócio
 - [ ] Validar CPF antes de salvar (delega para `DocumentValidationPolicy`)
-- [ ] `@PrePersist`: se `calculateAge(birthDate) > 75` → `status = SUSPENDED`
-- [ ] Ao adicionar dependente: verificar status + contar existentes (≤ 5)
+- [ ] `@PrePersist`: se `calculateAge(birthDate) > 75` → `status = BeneficiaryStatus.SUSPENDED`
+- [ ] Ao adicionar dependente: verificar `status != BeneficiaryStatus.CANCELLED && status != BeneficiaryStatus.INACTIVE` + contar existentes (≤ 5)
 - [ ] Publicar `AuditEvent` em toda mudança de status
 - **REQ:** REQ-BEN-001 a REQ-BEN-005
 - **Aceite:** 6º dependente → HTTP 409 "Limite de dependentes atingido"; beneficiário CANCELLED + dependente → HTTP 409
@@ -187,9 +187,10 @@
 ## FASE 3 — Módulo `eligibility`
 
 ### TASK-019 · EligibilityRule interface + implementações (Strategy)
-- [ ] Criar `com/sifap/eligibility/domain/EligibilityRule.java` (interface funcional)
-- [ ] Criar `RegionSpecialRule.java`: se `codRegion == 99` → APPROVED + motivo `REGIAO_ESPECIAL_99`
-- [ ] Criar `AssistentialIncomeRule.java`: se `ProgramType.ASSISTENCIAL` && renda > 600 && dependentes == 0 → REJECTED; usar `com.sifap.shared.domain.ProgramType` (TASK-003b)
+- [ ] Criar `com/sifap/eligibility/domain/EligibilityOutcome.java` (enum local: `APPROVED`, `REJECTED`) — não importar `PaymentStatus`; este tipo pertence apenas ao contexto `eligibility`
+- [ ] Criar `com/sifap/eligibility/domain/EligibilityRule.java` (interface funcional que retorna `EligibilityOutcome`)
+- [ ] Criar `RegionSpecialRule.java`: se `codRegion == 99` → `EligibilityOutcome.APPROVED` + motivo `REGIAO_ESPECIAL_99`
+- [ ] Criar `AssistentialIncomeRule.java`: se `ProgramType.ASSISTENCIAL` && renda > 600 && dependentes == 0 → `EligibilityOutcome.REJECTED`; usar `com.sifap.shared.domain.ProgramType` (TASK-003b)
 - [ ] Criar `EligibilityRuleChain.java`: executar regras em ordem; primeira que decidir ganha
 - **REQ:** REQ-ELEG-001, REQ-ELEG-002
 - **Aceite:** região 99 + renda R$10000 → APPROVED; ASSISTENCIAL + R$700 + 0 deps → REJECTED
