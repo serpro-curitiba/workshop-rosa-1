@@ -69,7 +69,7 @@ prototype/backend/
         AuditEventRepository.java        ← sem save/update/delete no repository
         AuditController.java
 
-sifap-frontend/
+prototype/frontend/
   app/
     (auth)/login/page.tsx
     dashboard/page.tsx
@@ -480,3 +480,50 @@ ENTRYPOINT ["java", \
 - A imagem final **não contém** `javac`, `mvn` nem o diretório `~/.m2`
 - `docker compose up` → backend responde em `http://localhost:8080/actuator/health` com `{"status":"UP"}`
 - Trocar o JDK na máquina do desenvolvedor **não afeta** o build (sem `JAVA_HOME` no `docker-compose.yml`)
+
+### 9.5 Dockerfile — `prototype/frontend/Dockerfile`
+
+```dockerfile
+# ── Stage 1: install dependencies ────────────────────────────────────────────
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# ── Stage 2: build ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# Requer next.config.js com output: 'standalone' (definido em TASK-027)
+RUN npm run build
+
+# ── Stage 3: runtime ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Usuário não-root — princípio do menor privilégio (OWASP A05)
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+# server.js é gerado pelo output: 'standalone' do Next.js
+CMD ["node", "server.js"]
+```
+
+**Critérios de aceite (TASK-038)**
+
+- `docker compose build frontend` conclui sem erros
+- A imagem final **não contém** `node_modules` de dev nem cache de build
+- `docker compose up` → frontend responde em `http://localhost:3001`
+- `npm run dev` local (dentro de `prototype/frontend/`) continua funcionando normalmente

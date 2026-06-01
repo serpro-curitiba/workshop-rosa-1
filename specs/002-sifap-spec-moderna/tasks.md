@@ -262,7 +262,8 @@
 ## FASE 7 — Frontend Next.js
 
 ### TASK-027 · Setup Next.js 15 + Tailwind + shadcn/ui
-- [ ] `npx create-next-app@latest sifap-frontend --typescript --tailwind --app`
+- [ ] `cd prototype/frontend && npx create-next-app@latest . --typescript --tailwind --app --eslint`
+- [ ] Adicionar `output: 'standalone'` ao `next.config.js` (necessário para o Dockerfile do TASK-038)
 - [ ] Instalar shadcn/ui: `npx shadcn-ui@latest init`
 - [ ] Configurar `tsconfig.json` com `strict: true`
 - [ ] Criar `lib/api.ts` com fetch helper autenticado (Bearer token)
@@ -334,9 +335,11 @@
 - [ ] Gatilho: todo push em `spec/**` e `develop`
 
 ### TASK-038 · Docker Compose — stack completa
+- [ ] Criar `prototype/frontend/Dockerfile` conforme spec §9.5 do plan.md
 - [ ] Verificar `docker-compose.yml` com serviços: `db` (postgres:16), `backend`, `frontend`
 - [ ] Backend health check em `/actuator/health`
 - [ ] Flyway roda automaticamente no startup do backend
+- [ ] `docker compose up` → frontend responde em `http://localhost:3001`
 
 ---
 
